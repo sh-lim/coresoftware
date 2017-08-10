@@ -39,6 +39,8 @@ PHG4MapsTelescopeDetector::PHG4MapsTelescopeDetector( PHCompositeNode *Node,  PH
   //envelope_inner_radius(26.0*mm),
   //envelope_outer_radius(880*mm),
   //envelope_z(2300*mm + no_overlap),
+  sensor_count(0),
+  stave_count(0),
   place_in_x(0 * cm),
   place_in_y(0 * cm),
   place_in_z(0 * cm),
@@ -49,6 +51,7 @@ PHG4MapsTelescopeDetector::PHG4MapsTelescopeDetector( PHCompositeNode *Node,  PH
   absorberactive(parameters->get_int_param("absorberactive")),
   layer(parameters->get_int_param("layer")),
   blackhole(parameters->get_int_param("blackhole")),
+  avid(-1),
   stave_type(parameters->get_int_param("stave_type")),
   layer_nominal_radius(parameters->get_double_param("layer_nominal_radius")),
   N_staves(parameters->get_int_param("N_staves")),
@@ -59,7 +62,7 @@ PHG4MapsTelescopeDetector::PHG4MapsTelescopeDetector( PHCompositeNode *Node,  PH
   pixel_thickness(parameters->get_double_param("pixel_thickness")),
   stave_geometry_file(parameters->get_string_param("stave_geometry_file"))
 {
-//  verbosity = 2;
+  verbosity = 0;
 
   if (verbosity > 0)
     cout << "PHG4MapsTelescopeDetector constructor called" << endl;
@@ -82,16 +85,41 @@ PHG4MapsTelescopeDetector::~PHG4MapsTelescopeDetector()
 //_______________________________________________________________
 //_______________________________________________________________
 int
-PHG4MapsTelescopeDetector::IsInMaps(G4VPhysicalVolume * volume) const
+PHG4MapsTelescopeDetector::IsSensor(G4VPhysicalVolume * volume) const
 {
   // Is this volume one of the sensors?
-
-  if (volume->GetName().find("ITSUSensor") != string::npos)
+  // Checks if pointer matches one of our stored sensors for this layer
+  if ( sensor_vol.find(volume) != sensor_vol.end() )
   {
-    // Check to see if this strip is in the layer belonging to this instance of MapsDetector
-    // layer_string contains "layer_n", where n = the layer number for this instance
-    if (volume->GetName().find(layer_string.c_str()) != string::npos)
-      return 1;
+    if ( verbosity > 0 )
+    {
+      cout << " -- PHG4MapsTelescopeDetector::IsSensor --" << endl;
+      cout << " volume Name : " << volume->GetName() << endl;
+      cout << " -----------------------------------------" << endl;
+    }
+    return 1;
+  }
+
+  return 0;
+}
+
+int
+PHG4MapsTelescopeDetector::IsInMaps(G4VPhysicalVolume * volume) const
+{
+  // Does this stave belong to this layer?
+  // Since the Assembly volume read from GDML does not give unique pointers
+  // to sensors, we need to check the stave, which is unique
+  if ( stave_vol.find(volume) != stave_vol.end() )
+  {
+    if ( verbosity > 0 )
+    {
+      cout << " -- PHG4MapsTelescopeDetector::IsInMaps --" << endl;
+      cout << " layer: " << layer << endl;
+      cout << " volume Name : " << volume->GetName() << endl;
+      cout << " stave Name  : " << stave_vol.find(volume)->first->GetName() << endl;
+      cout << " -----------------------------------------" << endl;
+    }
+    return 1;
   }
 
   return 0;
@@ -142,10 +170,11 @@ PHG4MapsTelescopeDetector::ConstructMaps(G4LogicalVolume* trackerenvelope)
 
   // figure out which assembly we want
   char assemblyname[500];
+  // sprintf(assemblyname, "ITSUStave%i", layer);
   sprintf(assemblyname, "ITSUStave0");
 
   if (Verbosity())
-    cout << "Geting the stave assembly named " << assemblyname << endl;
+    cout << "Geting the stave assembly named " << assemblyname << " for layer " << layer << endl;
   G4AssemblyVolume* av_ITSUStave = reader->GetAssembly(assemblyname);
 
   //  if (reader) delete reader;
@@ -155,6 +184,8 @@ PHG4MapsTelescopeDetector::ConstructMaps(G4LogicalVolume* trackerenvelope)
   //=========================================
 
 
+  phistep = 2.0 * M_PI / (double) N_staves;  // this produces even stave spacing
+
   // The stave starts out at (0,0,0) and oriented so that the sensors face upward in y
   // So we need to rotate the sensor 90 degrees before placing it using phi_offset
   // note that the gdml file uses a negative phi_offset - different coord system, apparently - the following works
@@ -162,7 +193,11 @@ PHG4MapsTelescopeDetector::ConstructMaps(G4LogicalVolume* trackerenvelope)
 
   // Place the ladder segment envelopes at the correct z and phi
   // This is the azimuthal angle at which we place the stave
-  G4double phi_rotation = M_PI / 2.0;
+  // Note that 0.0 places the staves along the negative x direction
+  // While for the telescope we'd like them in the +y direction
+  // Howeve, this lets us reuse the cell geometry, digitization, and clustering
+  // as is.
+  G4double phi_rotation = 0.0;
   double z_location = 0.0;
 
   G4RotationMatrix Ra;
@@ -173,13 +208,13 @@ PHG4MapsTelescopeDetector::ConstructMaps(G4LogicalVolume* trackerenvelope)
          << " phi_rotation = " << phi_rotation
          << " phitilt = " << phitilt << endl;
 
-  // It  is first rotated in phi by the azimuthal angle phi_rotation, 
-  // plus the 90 degrees needed to point the face of the sensor  at the origin,  
+  // It  is first rotated in phi by the azimuthal angle phi_rotation,
+  // plus the 90 degrees needed to point the face of the sensor  at the origin,
   // plus the tilt (if a tilt is appropriate)
 
-  // note - if this is layer 0-2, phitilt is the additional tilt for clearance. 
+  // note - if this is layer 0-2, phitilt is the additional tilt for clearance.
   //        Otherwise it is zero
-  Ra.rotateZ(phi_rotation + phi_offset + phitilt); 
+  Ra.rotateZ(phi_rotation + phi_offset + phitilt);
   // Then translated as follows
 
   Ta.setX(layer_nominal_radius * cos(phi_rotation));
@@ -198,6 +233,8 @@ PHG4MapsTelescopeDetector::ConstructMaps(G4LogicalVolume* trackerenvelope)
 
   av_ITSUStave->MakeImprint(trackerenvelope, Tr, 0, overlapcheck);
 
+  FillPVArray(av_ITSUStave);
+
   SetDisplayProperty(av_ITSUStave);
 
   return 0;
@@ -214,7 +251,9 @@ void PHG4MapsTelescopeDetector::SetDisplayProperty( G4AssemblyVolume* av)
   int nDaughters = av->TotalImprintedVolumes();
   for (int i = 0; i < nDaughters; ++i, ++it)
   {
-    //  cout <<"SetDisplayProperty - AV["<<i<<"] = "<<(*it)->GetName()<<endl;
+    if (Verbosity() >= 5)
+      cout << "SetDisplayProperty - AV[" << i << "] = " << (*it)->GetName() << endl;
+
     G4VPhysicalVolume* pv = (*it);
 
     G4LogicalVolume* worldLogical = pv->GetLogicalVolume();
@@ -332,4 +371,73 @@ PHG4MapsTelescopeDetector::AddGeometryNode()
     if (Verbosity())
       geo->identify();
   }
+}
+
+void
+PHG4MapsTelescopeDetector::FillPVArray( G4AssemblyVolume* av )
+{
+  if ( verbosity > 0 )
+    cout << "-- FillPVArray --" << endl;
+
+  std::vector<G4VPhysicalVolume*>::iterator it = av->GetVolumesIterator();
+
+  int nDaughters = av->TotalImprintedVolumes();
+  for (int i = 0; i < nDaughters; ++i, ++it)
+  {
+    G4VPhysicalVolume* pv = (*it);
+
+    G4LogicalVolume* worldLogical = pv->GetLogicalVolume();
+
+    if ( verbosity > 0)
+    {
+      cout << "FillPVArray - AV[" << i << "] = " << (*it)->GetName() << endl;
+      cout << "              LV[" << i << "] = " << worldLogical->GetName() << endl;
+    }
+    // we only care about the staves, which contain the sensors, not the structures
+    if ( pv->GetName().find("ITSUHalfStave0_pv") != string::npos)
+    {
+      stave_vol.insert(pair<G4VPhysicalVolume*, int>(pv, stave_count));
+      stave_count++;
+
+      FindSensor(worldLogical);
+    }
+  }
+
+  if ( verbosity > 0 )
+  {
+    cout << "stave count : " << stave_count << endl;
+    cout << "stave size  : " << stave_vol.size() << endl;
+    cout << "sensor count: " << sensor_count << endl;
+    cout << "sensor size : " << sensor_vol.size() << endl;
+    cout << "-----------------" << endl;
+  }
+}
+
+void PHG4MapsTelescopeDetector::FindSensor( G4LogicalVolume* lv )
+{
+  int nDaughters = lv->GetNoDaughters();
+  for (int i = 0; i < nDaughters; ++i)
+  {
+    G4VPhysicalVolume* pv = lv->GetDaughter(i);
+    if ( verbosity > 0 )
+      cout << "                 PV[" << i << "]: " << pv->GetName() << endl;
+
+    // cout <<"SetDisplayProperty - PV["<<i<<"] = "<<pv->GetName()<<endl;
+    if (pv->GetName().find("ITSUSensor") != string::npos)
+    {
+      // sensor_vol[pv] = sensor_count;
+      sensor_vol.insert(pair<G4VPhysicalVolume*, int>(pv, sensor_count));
+
+      sensor_count++;
+    }
+
+
+    G4LogicalVolume* worldLogical = pv->GetLogicalVolume();
+
+    if ( verbosity > 0 )
+      cout << "                 LV[" << i << "]: " << worldLogical->GetName() << endl;
+
+    FindSensor(worldLogical);
+  }
+
 }

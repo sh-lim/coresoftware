@@ -54,14 +54,6 @@ int PHG4MapsTelescopeSubsystem::InitRunSubsystem( PHCompositeNode* topNode )
   }
   detector_ = new PHG4MapsTelescopeDetector(topNode, GetParams(), Name());
   detector_->Verbosity(Verbosity());
-//  detector_->set_nominal_layer_radius(layer_nominal_radius);
-//  detector_->set_pixel_x(pixel_x);
-//  detector_->set_pixel_z(pixel_z);
-//  detector_->set_pixel_thickness(pixel_thickness);
-//  cout << " setting pixel_x " << pixel_x << " pixel_z " << pixel_z << " pixel_thickness " << pixel_thickness << endl;
-//  detector_->SetActive(active);
-//  detector_->SetAbsorberActive(absorberactive);
-//  detector_->BlackHole(blackhole);
   detector_->SuperDetector(superdetector);
   detector_->Detector(detector_type);
   detector_->OverlapCheck(CheckOverlap());
@@ -91,9 +83,9 @@ int PHG4MapsTelescopeSubsystem::InitRunSubsystem( PHCompositeNode* topNode )
 
       dstNode->addNode( new PHIODataNode<PHObject>( block_hits = new PHG4HitContainer(nodename.str()), nodename.str().c_str(), "PHObject" ));
 
+      if (Verbosity())
+        cout << PHWHERE << "creating hits node " << nodename.str() << endl;
     }
-    if (Verbosity())
-      cout << PHWHERE << "creating hits node " << nodename.str() << endl;
 
     PHG4EventActionClearZeroEdep *eventaction = new PHG4EventActionClearZeroEdep(topNode, nodename.str());
     if (GetParams()->get_int_param("absorberactive"))
