@@ -161,12 +161,13 @@ PHG4MapsCellReco::process_event(PHCompositeNode *topNode)
 	  if(verbosity >4)
 	    hiter->second->print();
 
+    // D. McGlinchey -- Why require this here? (Need 4 layers for MAPS Telescope)
 	  // checking ADC timing integration window cut
-	  if(*layer > 2)
-	    {
-	      cout  << PHWHERE << "Maps layers only go up to three! Quit." << endl;
-	      exit(1);
-	    }
+	  // if(*layer > 2)
+	  //   {
+	  //     cout  << PHWHERE << "Maps layers only go up to three! Quit." << endl;
+	  //     exit(1);
+	  //   }
 	  if(verbosity > 1)
 	    cout << " layer " << *layer << " t0 " << hiter->second->get_t(0) << " t1 " << hiter->second->get_t(1)
 		 << " tmin " <<  tmin_max[*layer].first << " tmax " <<  tmin_max[*layer].second
