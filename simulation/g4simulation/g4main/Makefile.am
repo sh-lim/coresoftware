@@ -69,6 +69,7 @@ libphg4hit_la_SOURCES = \
 libg4testbench_la_SOURCES = \
     G4TBMagneticFieldSetup.cc \
     G4TBFieldMessenger.cc \
+    PHG4MagneticField.cc \
     HepMCNodeReader.cc \
     PHG4ConsistencyCheck.cc \
     PHG4EtaParameterization.cc \
@@ -107,7 +108,8 @@ libg4testbench_la_LDFLAGS = \
     -L$(libdir) \
     -L$(OFFLINE_MAIN)/lib \
     -lboost_filesystem \
-    -lg4field -lg4decayer \
+    -lphfield \
+    -lg4decayer \
     -lgsl -lgslcblas \
     -lvararray \
     -lHepMC \
@@ -126,6 +128,7 @@ libg4testbench_la_LIBADD = \
 pkginclude_HEADERS = \
   HepMCNodeReader.h \
   PHBBox.h \
+  PHG4ColorDefs.h \
   PHG4Detector.h \
   PHG4EventAction.h \
   PHG4EventHeader.h \
@@ -200,6 +203,7 @@ PHG4_Dict.cc: \
   PHG4Reco.h \
   PHG4Subsystem.h \
   PHG4TruthSubsystem.h \
+  PHG4Utils.h \
   ReadEICFiles.h \
   PHG4LinkDef.h
 	rootcint -f $@ @CINTDEFS@ -c $(DEFAULT_INCLUDES) $(RINCLUDES) $^

@@ -15,6 +15,14 @@
 #include <g4decayer/EDecayType.hh>
 #include <g4decayer/P6DExtDecayerPhysics.hh>
 
+#include <phgeom/PHGeomUtility.h>
+
+#include <g4gdml/PHG4GDMLUtility.hh>
+
+#include <phfield/PHFieldUtility.h>
+#include <phfield/PHFieldConfig_v1.h>
+#include <phfield/PHFieldConfig_v2.h>
+
 #include <fun4all/Fun4AllReturnCodes.h>
 
 #include <phool/PHCompositeNode.h>
@@ -22,8 +30,6 @@
 #include <phool/getClass.h>
 #include <phool/recoConsts.h>
 
-#include <phgeom/PHGeomUtility.h>
-#include <g4gdml/PHG4GDMLUtility.hh>
 
 #include <TThread.h>
 
@@ -34,14 +40,16 @@
 #include <Geant4/G4Material.hh>
 #include <Geant4/G4NistManager.hh>
 #include <Geant4/G4OpenGLImmediateX.hh>
+#include <Geant4/G4Region.hh>
+#include <Geant4/G4RegionStore.hh>
 #include <Geant4/G4StepLimiterPhysics.hh>
 #include <Geant4/G4UIExecutive.hh>
 #include <Geant4/G4UImanager.hh>
 #include <Geant4/G4VisExecutive.hh>
-
 #include <Geant4/G4Cerenkov.hh>
 #include <Geant4/G4EmProcessOptions.hh>
 #include <Geant4/G4EmSaturation.hh>
+#include <Geant4/G4FastSimulationManager.hh>
 #include <Geant4/G4HadronicProcessStore.hh>
 #include <Geant4/G4LossTableManager.hh>
 #include <Geant4/G4OpAbsorption.hh>
@@ -51,6 +59,7 @@
 #include <Geant4/G4OpWLS.hh>
 #include <Geant4/G4OpticalPhoton.hh>
 #include <Geant4/G4OpticalPhysics.hh>
+#include <Geant4/G4PAIModel.hh>
 #include <Geant4/G4PEEffectFluoModel.hh>
 #include <Geant4/G4EmProcessOptions.hh>
 #include <Geant4/G4HadronicProcessStore.hh>
@@ -60,7 +69,7 @@
 #include <Geant4/G4ParticleTypes.hh>
 #include <Geant4/G4ProcessManager.hh>
 #include <Geant4/G4Scintillation.hh>
-
+#include <Geant4/G4SystemOfUnits.hh>
 #include <Geant4/G4Version.hh>
 #include <Geant4/globals.hh>
 
@@ -86,6 +95,7 @@
 #include <boost/filesystem.hpp>
 #include <boost/foreach.hpp>
 
+#include <memory>
 #include <cassert>
 #include <cstdlib>
 #include <cstring>
@@ -103,7 +113,7 @@ void g4guithread(void *ptr);
 //_________________________________________________________________
 PHG4Reco::PHG4Reco(const string &name)
   : SubsysReco(name)
-  , magfield(2)
+  , magfield(1.4)
   , magfield_rescale(1.0)
   , field_(nullptr)
   , runManager_(nullptr)
@@ -115,11 +125,15 @@ PHG4Reco::PHG4Reco(const string &name)
   , generatorAction_(nullptr)
   , visManager(nullptr)
   , _eta_coverage(1.0)
-  , mapdim(0)
+  , mapdim(PHFieldConfig::kFieldUniform)
   , fieldmapfile("NONE")
   , worldshape("G4Tubs")
   , worldmaterial("G4_AIR")
+#if  G4VERSION_NUMBER >= 1033
+  , physicslist("FTFP_BERT")
+#else
   , physicslist("QGSP_BERT")
+#endif
   , active_decayer_(true)
   , active_force_decay_(false)
   , force_decay_type_(kAll)
@@ -158,14 +172,14 @@ int PHG4Reco::Init(PHCompositeNode *topNode)
     cout << "========================= PHG4Reco::Init() ================================" << endl;
   }
   unsigned int iseed = PHRandomSeed();
-  cout << Name() << " G4 Random Seed: " << iseed << endl;
   G4Seed(iseed);  // fixed seed handled in PHRandomSeed()
 
   // create GEANT run manager
   if (verbosity > 1) cout << "PHG4Reco::Init - create run manager" << endl;
 
   // redirect GEANT verbosity to nowhere
-  if (verbosity < 1)
+//  if (verbosity < 1)
+  if (0)
   {
     G4UImanager *uimanager = G4UImanager::GetUIpointer();
     uisession_ = new PHG4UIsession();
@@ -176,23 +190,6 @@ int PHG4Reco::Init(PHCompositeNode *topNode)
   runManager_ = new G4RunManager();
 
   DefineMaterials();
-
-  //setup the constant field
-  if (verbosity > 1) cout << "PHG4Reco::Init - create magnetic field setup" << endl;
-  if (fieldmapfile != "NONE")
-  {
-    field_ = new G4TBMagneticFieldSetup(fieldmapfile, mapdim, magfield_rescale);
-    magfield = field_->get_magfield_at_000(2);  // get the z coordinate at 0/0/0
-    if (verbosity > 1)
-    {
-      cout << "magfield in PHG4Reco: " << magfield << endl;
-    }
-  }
-  else
-  {
-    field_ = new G4TBMagneticFieldSetup(magfield * magfield_rescale);
-  }
-
   // create physics processes
   G4VModularPhysicsList *myphysicslist = nullptr;
   if (physicslist == "FTFP_BERT")
@@ -245,8 +242,19 @@ int PHG4Reco::Init(PHCompositeNode *topNode)
     myphysicslist->RegisterPhysics(decayer);
   }
   myphysicslist->RegisterPhysics(new G4StepLimiterPhysics());
+// initialize cuts so we can ask the world region for it's default
+// cuts to propagate them to other regions in DefineRegions()
+  myphysicslist->SetCutsWithDefault();
   runManager_->SetUserInitialization(myphysicslist);
 
+  DefineRegions();
+#if G4VERSION_NUMBER >= 1033
+  G4EmSaturation* emSaturation = G4LossTableManager::Instance()->EmSaturation();
+  if (! emSaturation)
+  {
+    cout << PHWHERE << "Could not initialize EmSaturation, Birks constants will fail" << endl;
+  }
+#endif
   // initialize registered subsystems
   BOOST_FOREACH (SubsysReco *reco, subsystems_)
   {
@@ -258,6 +266,31 @@ int PHG4Reco::Init(PHCompositeNode *topNode)
     cout << "===========================================================================" << endl;
   }
   return 0;
+}
+
+int PHG4Reco::InitField(PHCompositeNode *topNode)
+{
+  if (verbosity > 1) cout << "PHG4Reco::InitField - create magnetic field setup" << endl;
+
+  unique_ptr<PHFieldConfig> default_field_cfg(nullptr);
+
+  if (fieldmapfile != "NONE")
+  {
+    default_field_cfg.reset(new PHFieldConfig_v1(mapdim, fieldmapfile, magfield_rescale));
+  }
+  else
+  {
+    default_field_cfg.reset(new PHFieldConfig_v2(0, 0, magfield * magfield_rescale));
+  }
+
+  if (verbosity > 1) cout << "PHG4Reco::InitField - create magnetic field setup" << endl;
+
+  PHField * phfield = PHFieldUtility::GetFieldMapNode(default_field_cfg.get(), topNode, Verbosity()+1);
+  assert(phfield);
+
+  field_ = new G4TBMagneticFieldSetup(phfield);
+
+  return Fun4AllReturnCodes::EVENT_OK;
 }
 
 int PHG4Reco::InitRun(PHCompositeNode *topNode)
@@ -282,6 +315,14 @@ int PHG4Reco::InitRun(PHCompositeNode *topNode)
   }
 
   recoConsts *rc = recoConsts::instance();
+
+  //setup the constant field
+  const int field_ret = InitField(topNode);
+  if (field_ret!=Fun4AllReturnCodes::EVENT_OK)
+  {
+    cout <<"PHG4Reco::InitRun- Error - Failed field init with status = "<<field_ret<<endl;
+    return field_ret;
+  }
 
   // initialize registered subsystems
   BOOST_FOREACH (SubsysReco *reco, subsystems_)
@@ -425,7 +466,7 @@ int PHG4Reco::InitRun(PHCompositeNode *topNode)
 
   // quiet some G4 print-outs (EM and Hadronic settings during first event)
   G4HadronicProcessStore::Instance()->SetVerbose(0);
-  G4LossTableManager::Instance()->SetVerbose(0);
+  G4LossTableManager::Instance()->SetVerbose(1);
 
   if ((verbosity < 1) && (uisession_))
   {
@@ -627,7 +668,7 @@ void PHG4Reco::G4Seed(const unsigned int i)
 void g4guithread(void *ptr)
 {
   TThread::Lock();
-  G4UIExecutive *ui = new G4UIExecutive(0, nullptr);
+  G4UIExecutive *ui = new G4UIExecutive(0, nullptr, "Xm");
   if (ui->IsGUI() && boost::filesystem::exists("gui.mac"))
   {
     UImanager->ApplyCommand("/control/execute gui.mac");
@@ -752,6 +793,17 @@ void PHG4Reco::DefineMaterials()
   G4Material *FR4 = new G4Material("FR4", density, ncomponents = 2);
   FR4->AddMaterial(quartz, fractionmass = 0.528);
   FR4->AddMaterial(Epoxy, fractionmass = 0.472);
+// NOMEX (HoneyComb)
+// density from http://www.fibreglast.com/product/Nomex_Honeycomb_1562/Vacuum_Bagging_Sandwich_Core
+// 1562: 29 kg/m^3 <-- I guess it is this one
+// 2562: 48 kg/m^3
+// chemical composition http://ww2.unime.it/cdlchimind/adm/inviofile/uploads/HP_Pols2.b.pdf
+  density = 29*kg/m3;
+  G4Material *NOMEX = new G4Material("NOMEX", density, ncomponents = 4);
+  NOMEX->AddElement(G4Element::GetElement("C"), natoms = 14);
+  NOMEX->AddElement(G4Element::GetElement("H"), natoms = 10);
+  NOMEX->AddElement(G4Element::GetElement("N"), natoms = 2);
+  NOMEX->AddElement(G4Element::GetElement("O"), natoms = 2);
   // spacal material. Source : EICROOT/A. Kiselev
   /*
   WEpoxyMix          3  12.011 1.008 183.85  6.  1.  74.  12.18  0.029 0.002 0.969
@@ -1188,7 +1240,7 @@ PMMA      -3  12.01 1.008 15.99  6.  1.  8.  1.19  3.6  5.7  1.4
   mRICH_glass_myMPT->AddProperty("ABSLENGTH", mRICH_PhotonEnergy, mRICH_glassAbsorption, mRICH_nEntries1);
 
   const G4Material *G4_Pyrex_Glass = nist->FindOrBuildMaterial("G4_Pyrex_Glass");
-  G4Material *mRICH_Borosilicate=  new G4Material("mRICH_Borosilicate",G4_Pyrex_Glass->GetDensity(),G4_Pyrex_Glass);
+  G4Material *mRICH_Borosilicate=  new G4Material("mRICH_Borosilicate",G4_Pyrex_Glass->GetDensity(),G4_Pyrex_Glass,G4_Pyrex_Glass->GetState(),G4_Pyrex_Glass->GetTemperature(),G4_Pyrex_Glass->GetPressure());
   mRICH_Borosilicate->SetMaterialPropertiesTable(mRICH_glass_myMPT);
 
   // mRICH_Air ------------------
@@ -1204,8 +1256,26 @@ PMMA      -3  12.01 1.008 15.99  6.  1.  8.  1.19  3.6  5.7  1.4
   G4MaterialPropertiesTable* mRICH_Air_myMPT = new G4MaterialPropertiesTable();
   mRICH_Air_myMPT->AddProperty("RINDEX", mRICH_PhotonEnergy, mRICH_AirRefractiveIndex , mRICH_nEntries1);
   const G4Material *G4_AIR = G4Material::GetMaterial("G4_AIR");
-  G4Material *mRICH_Air=  new G4Material("mRICH_Air",G4_AIR->GetDensity(),G4_AIR);
+  G4Material *mRICH_Air=  new G4Material("mRICH_Air",G4_AIR->GetDensity(),G4_AIR,G4_AIR->GetState(),G4_AIR->GetTemperature(),G4_AIR->GetPressure());
   mRICH_Air->SetMaterialPropertiesTable(mRICH_Air_myMPT);
+}
+
+void
+PHG4Reco::DefineRegions()
+{
+  const G4RegionStore* theRegionStore = G4RegionStore::GetInstance();
+  G4ProductionCuts *gcuts = new G4ProductionCuts(*(theRegionStore->GetRegion("DefaultRegionForTheWorld")->GetProductionCuts()));
+  G4Region *tpcregion = new G4Region("REGION_TPCGAS");
+  tpcregion->SetProductionCuts(gcuts);
+#if G4VERSION_NUMBER >= 1033
+// Use this from the new G4 version 10.03 on
+// add the PAI model to the TPCGAS region
+// undocumented, painfully digged out with debugger by tracing what
+// is done for command "/process/em/AddPAIRegion all TPCGAS PAI"
+  G4EmParameters *g4emparams = G4EmParameters::Instance();
+  g4emparams->AddPAIModel("all", "REGION_TPCGAS", "PAI");
+#endif
+  return;
 }
 
 PHG4Subsystem *
