@@ -1,7 +1,7 @@
 #include "PHG4TPCSteppingAction.h"
 #include "PHG4TPCDetector.h"
 
-#include <g4detectors/PHG4Parameters.h>
+#include <phparameter/PHParameters.h>
 #include <g4detectors/PHG4StepStatusDecode.h>
 
 #include <g4main/PHG4Hit.h>
@@ -38,7 +38,7 @@
 
 using namespace std;
 //____________________________________________________________________________..
-PHG4TPCSteppingAction::PHG4TPCSteppingAction(PHG4TPCDetector* detector, const PHG4Parameters* parameters)
+PHG4TPCSteppingAction::PHG4TPCSteppingAction(PHG4TPCDetector* detector, const PHParameters* parameters)
   : detector_(detector)
   , hits_(nullptr)
   , absorberhits_(nullptr)
@@ -89,11 +89,7 @@ bool PHG4TPCSteppingAction::UserSteppingAction(const G4Step* aStep, bool)
   {
     return false;
   }
-  int layer_id = 0;
-  if (whichactive < 0)  // support structures
-  {
-    layer_id = fabs(whichactive);  // we want a positive layer id
-  }
+  int layer_id = volume->GetCopyNo();
   // collect energy and track length step by step
   G4double edep = aStep->GetTotalEnergyDeposit() / GeV;
   G4double eion = (aStep->GetTotalEnergyDeposit() - aStep->GetNonIonizingEnergyDeposit()) / GeV;

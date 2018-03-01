@@ -2,7 +2,7 @@
 #include "PHG4TPCDetector.h"
 #include "PHG4TPCSteppingAction.h"
 
-#include <g4detectors/PHG4Parameters.h>
+#include <phparameter/PHParameters.h>
 
 #include <g4main/PHG4HitContainer.h>
 
@@ -177,4 +177,7 @@ void PHG4TPCSubsystem::SetDefaultParameters()
 
   set_default_string_param("cage_layer_9_material", "G4_Cu");
   set_default_double_param("cage_layer_9_thickness", 0.00347 / 2.);
+
+  set_default_string_param("window_material", "G4_KAPTON");
+  set_default_double_param("window_thickness", 0.05); // 50 um
 }
