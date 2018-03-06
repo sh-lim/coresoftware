@@ -280,16 +280,10 @@ void MvtxClusterizer::ClusterMvtx(PHCompositeNode *topNode) {
         double yl = thickness / 2.;
         double zl = ((mapiter->second).first + 0.5) * length;
 
-
-        // global coordinates
-        double xg;
-        double yg;
-        double zg;
-
-        // find the center of the pixel in world coords
-        xsum += xg;
-        ysum += yg;
-        zsum += zg;
+        // find the center of the pixel in local coords
+        xsum += xl;
+        ysum += yl;
+        zsum += zl;
 
         ++nhits;
       } //mapitr
@@ -308,7 +302,8 @@ void MvtxClusterizer::ClusterMvtx(PHCompositeNode *topNode) {
       clus.SetPosition(0, clusx);
       clus.SetPosition(1, clusy);
       clus.SetPosition(2, clusz);
-
+      clus.SetLocal();
+      
       float invsqrt12 = 1.0 / sqrt(12.0);
 
       TMatrixF DIM(3, 3);
