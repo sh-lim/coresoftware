@@ -361,7 +361,7 @@ void MvtxClusterizer::ClusterMvtx(PHCompositeNode *topNode) {
       clus.SetError( 2 , 2 , ERR[2][2] );
 
 
-      TrkrClusterContainer::ConstIterator newitr = clusterlist_->AddClusterSpecifyKey(clus.GetClusKey(), &clus);
+      TrkrClusterContainer::ConstIterator newitr = clusterlist_->AddCluster(&clus);
       if (newitr->second->isValid())
       {
         static bool first = true;
@@ -373,17 +373,18 @@ void MvtxClusterizer::ClusterMvtx(PHCompositeNode *topNode) {
         }
       }
 
-      if (verbosity > 1)
+      if ( true )
       {
         // fairly complete sanity check:
         // Get the list of g4hit positions for this cluster and compare positions
         cout << " For cluster " << newitr->second->GetClusKey() << endl;
         cout << " with id " << clusid << endl;
-        cout << " cluster position:"
-             << " x " << newitr->second->GetX()
-             << " y " << newitr->second->GetY()
-             << " z " << newitr->second->GetZ()
-             << endl;
+        newitr->second->identify();
+        // cout << " cluster position:"
+        //      << " x " << newitr->second->GetX()
+        //      << " y " << newitr->second->GetY()
+        //      << " z " << newitr->second->GetZ()
+        //      << endl;
         cout << endl;
       }
 
@@ -404,22 +405,22 @@ void MvtxClusterizer::PrintClusters(PHCompositeNode * topNode)
 
     cout << "================= MvtxClusterizer::process_event() ====================" << endl;
 
-
     cout << " Found and recorded the following " << clusterlist->size() << " clusters: " << endl;
 
     unsigned int icluster = 0;
 
-    TrkrClusterContainer::ConstRange clusrange = clusterlist->GetClusters(TrkrDefs::TRKRID::mvtx_id);
-    for (TrkrClusterContainer::ConstIterator iter = clusrange.first;
-         iter != clusrange.second;
-         ++iter)
-    {
+    // TrkrClusterContainer::ConstRange clusrange = clusterlist->GetClusters();
+    // for (TrkrClusterContainer::ConstIterator iter = clusrange.first;
+    //      iter != clusrange.second;
+    //      ++iter)
+    // {
 
-      TrkrCluster* cluster = iter->second;
-      cout << icluster << " of " << clusterlist->size() << endl;
-      cluster->identify();
-      ++icluster;
-    }
+    //   cout << icluster << " of " << clusterlist->size() << endl;
+    //   // iter->second->identify();
+    //   ++icluster;
+    // }
+
+    clusterlist->identify();
 
     cout << "===========================================================================" << endl;
   }
