@@ -254,13 +254,8 @@ void MvtxClusterizer::ClusterMvtx(PHCompositeNode *topNode) {
         cout << "Filling cluster id " << clusid << endl;
 
       // make cluster
-      TrkrClusterv1 clus;
-      //clus.SetClusKey(mvtxutil.GenClusKey(hitset->GetHitSetKey(), clusid));
-      clus.SetClusKey(mvtxutil.GenClusKey(0,0,mvtxutil.GetChipId(hitset->GetHitSetKey()),clusid));
-			cout << "HITSETKEY: " << hitset->GetHitSetKey() << endl;
-			cout << "STAVE: " << mvtxutil.GetStaveId(hitset->GetHitSetKey()) << ", CHIP: " << mvtxutil.GetChipId(hitset->GetHitSetKey()) << endl;
-			cout << "CLUS KEY: " << clus.GetClusKey() << endl;
-
+      TrkrDefs::cluskey ckey = mvtxutil.GenClusKey(0,0,mvtxutil.GetChipId(hitset->GetHitSetKey()),clusid);
+      TrkrClusterv1* clus = static_cast<TrkrClusterv1*>((clusterlist_->FindOrAddCluster(ckey))->second);
 
       // D. McGlinchey - Hard-coded for now, but these should be taken from
       //                 the geometry object once we have it
@@ -310,10 +305,10 @@ void MvtxClusterizer::ClusterMvtx(PHCompositeNode *topNode) {
       clusy = ysum / nhits;
       clusz = zsum / nhits;
 
-      clus.SetPosition(0, clusx);
-      clus.SetPosition(1, clusy);
-      clus.SetPosition(2, clusz);
-      clus.SetLocal();
+      clus->SetPosition(0, clusx);
+      clus->SetPosition(1, clusy);
+      clus->SetPosition(2, clusz);
+      clus->SetLocal();
       
       float invsqrt12 = 1.0 / sqrt(12.0);
 
@@ -340,52 +335,29 @@ void MvtxClusterizer::ClusterMvtx(PHCompositeNode *topNode) {
       ERR[2][2] = pow(0.5 * zsize * invsqrt12, 2);
 
 
-      clus.SetSize( 0 , 0 , DIM[0][0] );
-      clus.SetSize( 0 , 1 , DIM[0][1] );
-      clus.SetSize( 0 , 2 , DIM[0][2] );
-      clus.SetSize( 1 , 0 , DIM[1][0] );
-      clus.SetSize( 1 , 1 , DIM[1][1] );
-      clus.SetSize( 1 , 2 , DIM[1][2] );
-      clus.SetSize( 2 , 0 , DIM[2][0] );
-      clus.SetSize( 2 , 1 , DIM[2][1] );
-      clus.SetSize( 2 , 2 , DIM[2][2] );
+      clus->SetSize( 0 , 0 , DIM[0][0] );
+      clus->SetSize( 0 , 1 , DIM[0][1] );
+      clus->SetSize( 0 , 2 , DIM[0][2] );
+      clus->SetSize( 1 , 0 , DIM[1][0] );
+      clus->SetSize( 1 , 1 , DIM[1][1] );
+      clus->SetSize( 1 , 2 , DIM[1][2] );
+      clus->SetSize( 2 , 0 , DIM[2][0] );
+      clus->SetSize( 2 , 1 , DIM[2][1] );
+      clus->SetSize( 2 , 2 , DIM[2][2] );
 
-      clus.SetError( 0 , 0 , ERR[0][0] );
-      clus.SetError( 0 , 1 , ERR[0][1] );
-      clus.SetError( 0 , 2 , ERR[0][2] );
-      clus.SetError( 1 , 0 , ERR[1][0] );
-      clus.SetError( 1 , 1 , ERR[1][1] );
-      clus.SetError( 1 , 2 , ERR[1][2] );
-      clus.SetError( 2 , 0 , ERR[2][0] );
-      clus.SetError( 2 , 1 , ERR[2][1] );
-      clus.SetError( 2 , 2 , ERR[2][2] );
+      clus->SetError( 0 , 0 , ERR[0][0] );
+      clus->SetError( 0 , 1 , ERR[0][1] );
+      clus->SetError( 0 , 2 , ERR[0][2] );
+      clus->SetError( 1 , 0 , ERR[1][0] );
+      clus->SetError( 1 , 1 , ERR[1][1] );
+      clus->SetError( 1 , 2 , ERR[1][2] );
+      clus->SetError( 2 , 0 , ERR[2][0] );
+      clus->SetError( 2 , 1 , ERR[2][1] );
+      clus->SetError( 2 , 2 , ERR[2][2] );
 
 
-      TrkrClusterContainer::ConstIterator newitr = clusterlist_->AddClusterSpecifyKey(clus.GetClusKey(), &clus);
-      if (newitr->second->isValid())
-      {
-        static bool first = true;
-        if (first)
-        {
-          cout << PHWHERE << "ERROR: Invalid SvtxClusters are being produced" << endl;
-          newitr->second->identify();
-          first = false;
-        }
-      }
-
-      if (verbosity > 1)
-      {
-        // fairly complete sanity check:
-        // Get the list of g4hit positions for this cluster and compare positions
-        cout << " For cluster " << newitr->second->GetClusKey() << endl;
-        cout << " with id " << clusid << endl;
-        cout << " cluster position:"
-             << " x " << newitr->second->GetX()
-             << " y " << newitr->second->GetY()
-             << " z " << newitr->second->GetZ()
-             << endl;
-        cout << endl;
-      }
+      if ( verbosity > 2 )
+        clus->identify();
 
     } // clusitr
   } // hitsetitr
@@ -404,22 +376,9 @@ void MvtxClusterizer::PrintClusters(PHCompositeNode * topNode)
 
     cout << "================= MvtxClusterizer::process_event() ====================" << endl;
 
-
     cout << " Found and recorded the following " << clusterlist->size() << " clusters: " << endl;
 
-    unsigned int icluster = 0;
-
-    TrkrClusterContainer::ConstRange clusrange = clusterlist->GetClusters(TrkrDefs::TRKRID::mvtx_id);
-    for (TrkrClusterContainer::ConstIterator iter = clusrange.first;
-         iter != clusrange.second;
-         ++iter)
-    {
-
-      TrkrCluster* cluster = iter->second;
-      cout << icluster << " of " << clusterlist->size() << endl;
-      cluster->identify();
-      ++icluster;
-    }
+    clusterlist->identify();
 
     cout << "===========================================================================" << endl;
   }
