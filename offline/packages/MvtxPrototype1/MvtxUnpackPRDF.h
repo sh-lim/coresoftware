@@ -7,7 +7,7 @@
 #include <fun4all/SubsysReco.h>
 #include <phool/PHObject.h>
 
-#define NCHIP 2
+#define NCHIP 4
 #define NROW 512
 #define NREGION 32
 #define NCOL_PER_REGION 32
