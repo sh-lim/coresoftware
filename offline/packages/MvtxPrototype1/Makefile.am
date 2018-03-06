@@ -24,13 +24,16 @@ libMvtxPrototype1_la_LIBADD = \
 
 pkginclude_HEADERS = \
   MvtxClusterizer.h \
-  MvtxUnpackPRDF.h 
+  MvtxUnpackPRDF.h \
+  MvtxQAHisto.h 
 
 libMvtxPrototype1_la_SOURCES = \
   MvtxClusterizer.C \
   MvtxClusterizer_Dict.C \
   MvtxUnpackPRDF.C \
-  MvtxUnpackPRDF_Dict.C
+  MvtxUnpackPRDF_Dict.C \
+  MvtxQAHisto.C \
+  MvtxQAHisto_Dict.C
 
 # Rule for generating table CINT dictionaries.
 %_Dict.C: %.h %LinkDef.h

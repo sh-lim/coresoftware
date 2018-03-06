@@ -7,9 +7,15 @@
 #include <fun4all/SubsysReco.h>
 #include <phool/PHObject.h>
 
+#define NCHIP 2
+#define NROW 512
+#define NREGION 32
+#define NCOL_PER_REGION 32
+
 class Event;
 class Packet;
 class Packet_hbd_fpgashort;
+class TrkrHitSetContainer;
 
 class MvtxUnpackPRDF : public SubsysReco
 {
@@ -28,14 +34,28 @@ public:
   int
   End(PHCompositeNode *topNode);
 
+	void
+	Verbosity(int v) {_verbosity = v;}
+
   void
   CreateNodeTree(PHCompositeNode *topNode);
 
+	void MakeHits();
+
 private:
+
+	PHCompositeNode* dstNode;
 
   Event* _event;
   Packet_hbd_fpgashort* _packet;
+	TrkrHitSetContainer *_hitsetcon;
+
   int _nevents;
+	int _verbosity;
+	bool _first;
+
+	int _nevent_per_chip[NCHIP];
+	int _npixel_per_chip[NCHIP];
 
 };
 
