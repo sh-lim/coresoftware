@@ -152,10 +152,10 @@ int MvtxClusterizer::process_event(PHCompositeNode *topNode) {
     cout << PHWHERE << " ERROR: Can't find TrkrClusterContainer." << endl;
     return Fun4AllReturnCodes::ABORTRUN;
   }
-  clusterlist_->Reset();
+	clusterlist_->Reset();
 
   // run clustering
-  ClusterMvtx(topNode);
+	ClusterMvtx(topNode);
   PrintClusters(topNode);
 
   // done
@@ -178,13 +178,16 @@ void MvtxClusterizer::ClusterMvtx(PHCompositeNode *topNode) {
 
   // loop over each MvtxHitSet object (chip)
   TrkrHitSetContainer::ConstRange hitsetrange =
-    hits_->GetHitSets(TrkrDefs::TRKRID::mvtx_id);
+    //hits_->GetHitSets(TrkrDefs::TRKRID::mvtx_id);
+    hits_->GetHitSets();
   for ( TrkrHitSetContainer::ConstIterator hitsetitr = hitsetrange.first;
         hitsetitr != hitsetrange.second;
         ++hitsetitr )
   {
 
     MvtxHitSetv1* hitset = static_cast<MvtxHitSetv1*>(hitsetitr->second);
+		if (verbosity>2)
+			hitset->identify();
 
     TrkrDefUtil trkrutil;
     MvtxDefUtil mvtxutil;
@@ -200,6 +203,9 @@ void MvtxClusterizer::ClusterMvtx(PHCompositeNode *topNode) {
     {
       hitvec.push_back(make_pair(hitr->first, hitr->second));
     }
+		if ( verbosity>2 )
+			cout << "hitvec.size(): " << hitvec.size() << endl;
+
     // do the clustering
     typedef adjacency_list <vecS, vecS, undirectedS> Graph;
     Graph G;
@@ -249,7 +255,12 @@ void MvtxClusterizer::ClusterMvtx(PHCompositeNode *topNode) {
 
       // make cluster
       TrkrClusterv1 clus;
-      clus.SetClusKey(mvtxutil.GenClusKey(hitset->GetHitSetKey(), clusid));
+      //clus.SetClusKey(mvtxutil.GenClusKey(hitset->GetHitSetKey(), clusid));
+      clus.SetClusKey(mvtxutil.GenClusKey(0,0,mvtxutil.GetChipId(hitset->GetHitSetKey()),clusid));
+			cout << "HITSETKEY: " << hitset->GetHitSetKey() << endl;
+			cout << "STAVE: " << mvtxutil.GetStaveId(hitset->GetHitSetKey()) << ", CHIP: " << mvtxutil.GetChipId(hitset->GetHitSetKey()) << endl;
+			cout << "CLUS KEY: " << clus.GetClusKey() << endl;
+
 
       // D. McGlinchey - Hard-coded for now, but these should be taken from
       //                 the geometry object once we have it
@@ -348,7 +359,6 @@ void MvtxClusterizer::ClusterMvtx(PHCompositeNode *topNode) {
       clus.SetError( 2 , 0 , ERR[2][0] );
       clus.SetError( 2 , 1 , ERR[2][1] );
       clus.SetError( 2 , 2 , ERR[2][2] );
-
 
 
       TrkrClusterContainer::ConstIterator newitr = clusterlist_->AddClusterSpecifyKey(clus.GetClusKey(), &clus);
