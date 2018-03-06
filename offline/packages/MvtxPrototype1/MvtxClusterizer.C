@@ -256,10 +256,6 @@ void MvtxClusterizer::ClusterMvtx(PHCompositeNode *topNode) {
       // make cluster
       TrkrDefs::cluskey ckey = mvtxutil.GenClusKey(0,0,mvtxutil.GetChipId(hitset->GetHitSetKey()),clusid);
       TrkrClusterv1* clus = static_cast<TrkrClusterv1*>((clusterlist_->FindOrAddCluster(ckey))->second);
-			cout << "HITSETKEY: 0x" << hex << hitset->GetHitSetKey() << dec << endl;
-			cout << "STAVE: " << int(mvtxutil.GetStaveId(hitset->GetHitSetKey())) << ", CHIP: " << int(mvtxutil.GetChipId(hitset->GetHitSetKey())) << endl;
-			cout << "CLUS KEY: 0x" << hex << clus->GetClusKey() << dec << endl;
-
 
       // D. McGlinchey - Hard-coded for now, but these should be taken from
       //                 the geometry object once we have it
@@ -360,35 +356,8 @@ void MvtxClusterizer::ClusterMvtx(PHCompositeNode *topNode) {
       clus->SetError( 2 , 2 , ERR[2][2] );
 
 
-      if ( verbosity > 0 )
+      if ( verbosity > 2 )
         clus->identify();
-
-      // TrkrClusterContainer::ConstIterator newitr = clusterlist_->AddCluster(&clus);
-      // if (newitr->second->isValid())
-      // {
-      //   static bool first = true;
-      //   if (first)
-      //   {
-      //     cout << PHWHERE << "ERROR: Invalid SvtxClusters are being produced" << endl;
-      //     newitr->second->identify();
-      //     first = false;
-      //   }
-      // }
-
-      // if ( true )
-      // {
-      //   // fairly complete sanity check:
-      //   // Get the list of g4hit positions for this cluster and compare positions
-      //   cout << " For cluster 0x" << hex << newitr->second->GetClusKey() << dec << endl;
-      //   cout << " with id " << clusid << endl;
-      //   newitr->second->identify();
-      //   // cout << " cluster position:"
-      //   //      << " x " << newitr->second->GetX()
-      //   //      << " y " << newitr->second->GetY()
-      //   //      << " z " << newitr->second->GetZ()
-      //   //      << endl;
-      //   cout << endl;
-      // }
 
     } // clusitr
   } // hitsetitr
@@ -408,19 +377,6 @@ void MvtxClusterizer::PrintClusters(PHCompositeNode * topNode)
     cout << "================= MvtxClusterizer::process_event() ====================" << endl;
 
     cout << " Found and recorded the following " << clusterlist->size() << " clusters: " << endl;
-
-    unsigned int icluster = 0;
-
-    // TrkrClusterContainer::ConstRange clusrange = clusterlist->GetClusters();
-    // for (TrkrClusterContainer::ConstIterator iter = clusrange.first;
-    //      iter != clusrange.second;
-    //      ++iter)
-    // {
-
-    //   cout << icluster << " of " << clusterlist->size() << endl;
-    //   // iter->second->identify();
-    //   ++icluster;
-    // }
 
     clusterlist->identify();
 
