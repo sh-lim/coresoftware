@@ -17,12 +17,18 @@ libMvtxPrototype1_la_LIBADD = \
   -lCLHEP \
   -lphool \
   -lfun4all \
-  -lphparameter
+  -lphparameter \
+  -ltrack_io \
+  -ltrack_util \
+  -lmvtx
 
 pkginclude_HEADERS = \
+  MvtxClusterizer.h \
   MvtxUnpackPRDF.h 
 
 libMvtxPrototype1_la_SOURCES = \
+  MvtxClusterizer.C \
+  MvtxClusterizer_Dict.C \
   MvtxUnpackPRDF.C \
   MvtxUnpackPRDF_Dict.C
 
