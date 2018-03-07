@@ -78,13 +78,14 @@ MvtxUnpackPRDF::process_event(PHCompositeNode *topNode)
 	{
 		cout << "MvtxUnpackPRDF::Process_Event - TrkrHitSetContainer not found" << endl;
 		return -1;
-	}else{
+	}
+	else{
 
 		MvtxDefUtil *mvtxdef = new MvtxDefUtil();
 
 		for (int ichip=0; ichip<NCHIP; ichip++){
 			MvtxHitSetv1 *hitset = new MvtxHitSetv1();
-			hitset->SetHitSetKey(mvtxdef->GenHitSetKey(char(0),uint8_t(0),uint8_t(ichip)));
+			hitset->SetHitSetKey(mvtxdef->GenHitSetKey(char(ichip),uint8_t(0),uint8_t(ichip)));
 			_hitsetcon->AddHitSetSpecifyKey(hitset->GetHitSetKey(),hitset);
 			if ( _verbosity>10 )
 			{
@@ -214,7 +215,7 @@ MvtxUnpackPRDF::MakeHits()
 		for (int ichip=0; ichip<chipmax; ichip++)
 		{
 
-			TrkrDefs::hitsetkey mvtx_hitsetkey = mvtxdef->GenHitSetKey(char(0),uint8_t(0),uint8_t(ichip));
+			TrkrDefs::hitsetkey mvtx_hitsetkey = mvtxdef->GenHitSetKey(char(ichip),uint8_t(0),uint8_t(ichip));
 
 			for (int irow=0; irow<NROW; irow++)
 			{
