@@ -73,6 +73,7 @@ int MvtxApplyHotDead::process_event(PHCompositeNode *topNode)
     {
       prevkey = iter->first;
       hitset = static_cast<MvtxHitSetv1*>(hits_->FindHitSet(iter->first));
+      hitset->identify();
     }
 
     // check to make sure we have this hitset
@@ -87,6 +88,7 @@ int MvtxApplyHotDead::process_event(PHCompositeNode *topNode)
              << " col:" << (iter->second).first
              << " row:" << (iter->second).second
              << endl;
+             hitset->identify();
       }
       else if ( verbosity > 1 )
       {
@@ -97,6 +99,11 @@ int MvtxApplyHotDead::process_event(PHCompositeNode *topNode)
              << endl;
       }
 
+    }
+    else
+    {
+      if ( verbosity > 0 )
+        cout << PHWHERE << " no TrkrHitSet found for key 0x" << hex << iter->first << dec << endl;
     }
   }
 
