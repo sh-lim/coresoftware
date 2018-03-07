@@ -61,7 +61,44 @@ int MvtxApplyHotDead::process_event(PHCompositeNode *topNode)
   //------
   //-- mask pixels
   //------
+  MvtxHitSetv1 *hitset = NULL;
+  TrkrDefs::hitsetkey prevkey = TrkrDefs::HITSETKEYMAX;
+  for ( ConstIterator iter = hdmap_.begin();
+        iter != hdmap_.end();
+        ++iter)
+  {
 
+    // get the new hitset if necessary
+    if ( iter->first != prevkey )
+    {
+      prevkey = iter->first;
+      hitset = static_cast<MvtxHitSetv1*>(hits_->FindHitSet(iter->first));
+    }
+
+    // check to make sure we have this hitset
+    if ( hitset )
+    {
+      int retval = hitset->RemoveHit((iter->second).first, (iter->second).second);
+
+      if ( retval > 0 && verbosity > 0)
+      {
+        cout << PHWHERE << " Successfully removed hit "
+             << " key:0x" << hex << iter->first << dec
+             << " col:" << (iter->second).first
+             << " row:" << (iter->second).second
+             << endl;
+      }
+      else if ( verbosity > 1 )
+      {
+        cout << PHWHERE << " no hit found hit "
+             << " key:0x" << hex << iter->first << dec
+             << " col:" << (iter->second).first
+             << " row:" << (iter->second).second
+             << endl;
+      }
+
+    }
+  }
 
 
   //------

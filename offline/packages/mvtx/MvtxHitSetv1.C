@@ -50,7 +50,7 @@ MvtxHitSetv1::RemoveHit(const uint16_t col, const uint16_t row)
     if ( iter->second == row )
     {
       hits_.erase(iter);
-      break;
+      return 1;
     }
   }
   return 0;
