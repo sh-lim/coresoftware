@@ -257,12 +257,6 @@ void MvtxClusterizer::ClusterMvtx(PHCompositeNode *topNode) {
       TrkrDefs::cluskey ckey = mvtxutil.GenClusKey(0,0,mvtxutil.GetChipId(hitset->GetHitSetKey()),clusid);
       TrkrClusterv1* clus = static_cast<TrkrClusterv1*>((clusterlist_->FindOrAddCluster(ckey))->second);
 
-      // D. McGlinchey - Hard-coded for now, but these should be taken from
-      //                 the geometry object once we have it
-      float thickness = 50e-4; // 50 microns -> cm
-      float pitch = 28e-4;  // 28 microns -> cm
-      float length = 28e-4; // 28 microns -> cm
-
       // determine the size of the cluster in phi and z
       set<int> phibins;
       set<int> zbins;
@@ -281,21 +275,16 @@ void MvtxClusterizer::ClusterMvtx(PHCompositeNode *topNode) {
         zbins.insert((mapiter->second).first);
         phibins.insert((mapiter->second).second);
 
-        // local coordinates
-        double xl = ((mapiter->second).second + 0.5) * pitch;
-        double yl = thickness / 2.;
-        double zl = ((mapiter->second).first + 0.5) * length;
-
         // find the center of the pixel in local coords
-        xsum += xl;
-        ysum += yl;
-        zsum += zl;
+        xsum += (mapiter->second).second;
+        zsum += (mapiter->second).first + 0.5;
 
         ++nhits;
       } //mapitr
 
-      float phisize = phibins.size() * pitch;
-      float zsize = zbins.size() * length;
+      float thickness = 0;
+      float phisize = phibins.size();
+      float zsize = zbins.size();
 
       double clusx = NAN;
       double clusy = NAN;
@@ -310,6 +299,8 @@ void MvtxClusterizer::ClusterMvtx(PHCompositeNode *topNode) {
       clus->SetPosition(2, clusz);
       clus->SetLocal();
       
+      clus->SetAdc(nhits);
+
       float invsqrt12 = 1.0 / sqrt(12.0);
 
       TMatrixF DIM(3, 3);
