@@ -23,11 +23,14 @@ libMvtxPrototype1_la_LIBADD = \
   -lmvtx
 
 pkginclude_HEADERS = \
+  MvtxApplyHotDead.h \
   MvtxClusterizer.h \
   MvtxUnpackPRDF.h \
   MvtxQAHisto.h 
 
 libMvtxPrototype1_la_SOURCES = \
+  MvtxApplyHotDead.C \
+  MvtxApplyHotDead_Dict.C \
   MvtxClusterizer.C \
   MvtxClusterizer_Dict.C \
   MvtxUnpackPRDF.C \
