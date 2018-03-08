@@ -23,12 +23,15 @@ libMvtxPrototype1_la_LIBADD = \
   -lmvtx
 
 pkginclude_HEADERS = \
+  MvtxAlign.h \
   MvtxApplyHotDead.h \
   MvtxClusterizer.h \
   MvtxUnpackPRDF.h \
   MvtxQAHisto.h 
 
 libMvtxPrototype1_la_SOURCES = \
+  MvtxAlign.C \
+  MvtxAlign_Dict.C \
   MvtxApplyHotDead.C \
   MvtxApplyHotDead_Dict.C \
   MvtxClusterizer.C \
