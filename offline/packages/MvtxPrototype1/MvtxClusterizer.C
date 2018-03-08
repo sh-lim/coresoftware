@@ -254,7 +254,7 @@ void MvtxClusterizer::ClusterMvtx(PHCompositeNode *topNode) {
         cout << "Filling cluster id " << clusid << endl;
 
       // make cluster
-      TrkrDefs::cluskey ckey = mvtxutil.GenClusKey(0,0,mvtxutil.GetChipId(hitset->GetHitSetKey()),clusid);
+      TrkrDefs::cluskey ckey = mvtxutil.GenClusKey(hitset->GetHitSetKey(),clusid);
       TrkrClusterv1* clus = static_cast<TrkrClusterv1*>((clusterlist_->FindOrAddCluster(ckey))->second);
 
       // determine the size of the cluster in phi and z
