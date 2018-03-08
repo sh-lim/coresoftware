@@ -19,6 +19,7 @@
 #include <g4detectors/PHG4CylinderGeom_Siladders.h>
 #include <g4detectors/PHG4Cell.h>
 #include <g4detectors/PHG4CylinderCellGeom.h>
+#include <phool/recoConsts.h>
 
 #include <iostream>
 #include <fstream>
@@ -29,6 +30,9 @@ using namespace std;
 MvtxAlign::MvtxAlign(const string &name ) :
   SubsysReco(name),
   clusters_(NULL),
+  fdir_(""),
+  runnumber_(0),
+  apff_(true),
   _timer(PHTimeServer::get()->insert_new(name))
 {
 
@@ -36,6 +40,15 @@ MvtxAlign::MvtxAlign(const string &name ) :
 
 int MvtxAlign::InitRun(PHCompositeNode* topNode)
 {
+  // get the run number
+  if ( apff_ )
+  {
+    recoConsts *rc = recoConsts::instance();
+    runnumber_ = rc->get_IntFlag("RUNNUMBER");
+    cout << PHWHERE << " Runnumber: " << runnumber_ << endl;
+    ReadAlignmentParFile();
+  }
+
   return Fun4AllReturnCodes::EVENT_OK;
 }
 
@@ -57,6 +70,7 @@ int MvtxAlign::process_event(PHCompositeNode *topNode)
   //------
   //-- shift clusters
   //------
+  TrkrDefUtil util;
 
   TrkrClusterContainer::ConstRange clusrange = clusters_->GetClusters();
   for ( TrkrClusterContainer::ConstIterator iter = clusrange.first;
@@ -66,8 +80,8 @@ int MvtxAlign::process_event(PHCompositeNode *topNode)
 
     // get the key and check if we need to realign this cluster
     TrkrDefs::cluskey ckey = (iter->second)->GetClusKey();
-    TrkrDefs::hitsetkey hkey = ;
-    auto aligniter = alignmap_.find(ckey);
+    TrkrDefs::hitsetkey hkey = util.GetHitSetKeyFromClusKey(ckey);
+    auto aligniter = alignmap_.find(hkey);
 
     if ( aligniter != alignmap_.end() )
     {
@@ -125,7 +139,7 @@ void MvtxAlign::AddAlignmentPar(TrkrDefs::hitsetkey key, double dx, double dy, d
 
     if ( verbosity > 0 )
     {
-      cout << PHWHERE << " Added misalignment:"
+      cout << PHWHERE << " Added alignment pars:"
            << " key:0x" << hex << key << dec
            << " dx:" << dx
            << " dy:" << dy
@@ -156,5 +170,44 @@ void MvtxAlign::PrintAlignmentPars(std::ostream& os) const
   }
 
   os << "=============================================================" << endl;
+}
+
+
+int MvtxAlign::ReadAlignmentParFile()
+{
+
+  char fname[500];
+  sprintf(fname, "%sbeamcenter_%08d.txt", fdir_.c_str(), runnumber_);
+  ifstream fin;
+  fin.open(fname);
+  if ( fin.is_open() )
+  {
+    cout << PHWHERE << " Reading alignment parameters from " << fname << endl;
+    MvtxDefUtil util;
+
+    string line;
+    while ( getline(fin, line) )
+    {
+      int lyr, stave, chip;
+      float dx = 0;
+      float dy = 0;
+      float dz = 0;
+
+      sscanf(line.c_str(), "%d %d %d %f %f %f", &lyr, &stave, &chip, &dx, &dy, &dz);
+      AddAlignmentPar(
+        util.GenHitSetKey(lyr, stave, chip),
+        double(dx), double(dy), double(dz));
+    }
+  }
+  else
+  {
+    cout << PHWHERE << "ERROR: Unable to open file " << fname << endl;
+    return 1;
+  }
+
+  if ( verbosity > 0 )
+    PrintAlignmentPars();
+
+  return 0;
 }
 

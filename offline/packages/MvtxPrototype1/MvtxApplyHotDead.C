@@ -73,7 +73,6 @@ int MvtxApplyHotDead::process_event(PHCompositeNode *topNode)
     {
       prevkey = iter->first;
       hitset = static_cast<MvtxHitSetv1*>(hits_->FindHitSet(iter->first));
-      hitset->identify();
     }
 
     // check to make sure we have this hitset

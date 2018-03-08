@@ -43,14 +43,27 @@ public:
   //! print stored misalignments
   void PrintAlignmentPars(std::ostream &os = std::cout) const;
 
+  //! set the directory for alignment parameter files
+  void SetAlignmentParFileDir(const std::string fdir) { fdir_ = fdir; }
+
+  //! set boolean to read from file rather than setting by hand
+  void SetAlignmentParFromFile(const bool yn) { apff_ = yn; }
+
 private:
 
+  // read the alignment parameters from file based on run number
+  int ReadAlignmentParFile();
 
   // node tree storage pointers
   TrkrClusterContainer* clusters_;
 
   // storage object for misalignments
   std::map<TrkrDefs::hitsetkey, AlignmentPar> alignmap_;
+
+  // directory for alignment parameter files
+  std::string fdir_;
+  int runnumber_;
+  bool apff_; // alignment par from file
 
   PHTimeServer::timer _timer;
 };
